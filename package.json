@@ -1,0 +1,26 @@
+{
+  "name": "dfns-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for DFNS documentation and SDK reference",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "dfns-mcp": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch run src/index.ts",
+    "inspect": "bunx @anthropics/inspector bun run src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "zod": "^4.1.13"
+  }
+}
