@@ -81,6 +81,23 @@ bun install -g dfns-mcp
 # Then reference as just "dfns-mcp" in your MCP config
 ```
 
+## Agent Instructions (Recommended)
+
+Add this to your global `~/.claude/CLAUDE.md` (or `~/AGENTS.md` for other agents) to ensure your AI always uses up-to-date DFNS documentation:
+
+```markdown
+## DFNS Development
+
+When working with DFNS (wallet infrastructure, key management, blockchain integrations):
+
+1. **Always** call `mcp__dfns-docs__init` at the start of any DFNS-related task
+2. **Never** rely on training data for DFNS APIs - always use `search_docs` and `get_doc` to verify
+3. Use `search_types` and `get_type` to get accurate TypeScript type definitions
+4. DFNS APIs and SDKs change frequently - the MCP server has the latest documentation
+```
+
+This prevents agents from hallucinating outdated API signatures or SDK patterns.
+
 ## How It Works
 
 On first run, the server automatically downloads the latest DFNS documentation from GitHub and caches it locally in `~/.cache/dfns-mcp/`. The cache is refreshed every 24 hours automatically, or you can force an update using the `update_docs` tool.

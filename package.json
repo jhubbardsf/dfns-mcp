@@ -15,7 +15,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts",
-    "inspect": "bunx @anthropics/inspector bun run src/index.ts"
+    "inspect": "bunx @modelcontextprotocol/inspector bun run src/index.ts"
   },
   "keywords": [
     "mcp",

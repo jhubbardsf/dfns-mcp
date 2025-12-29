@@ -39,3 +39,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # DFNS documentation repos (fetched at runtime)
 dfns-api-docs/
 dfns-sdk-ts/
+
+.cursorindexingignore 
+.specstory/
