@@ -10,6 +10,29 @@ export interface DocEntry {
   keywords: string[];
 }
 
+// ============================================================================
+// TypeScript Type Indexing
+// ============================================================================
+
+export interface TypeEntry {
+  /** The type/interface/class name */
+  name: string;
+  /** Kind of definition: 'type', 'interface', or 'class' */
+  kind: "type" | "interface" | "class";
+  /** Full definition including JSDoc comments */
+  definition: string;
+  /** The npm package to import from (e.g., '@dfns/sdk', '@dfns/sdk-browser') */
+  importPackage: string;
+  /** The subpath import if needed (e.g., '@dfns/sdk/generated/wallets') */
+  importPath: string;
+  /** Category (wallets, auth, keys, etc.) */
+  category: string;
+  /** JSDoc description if available */
+  description: string;
+  /** Source file path */
+  sourceFile: string;
+}
+
 export interface SearchResult {
   path: string;
   title: string;
@@ -22,6 +45,279 @@ export interface ApiEndpoint {
   method: string;
   path: string;
   docPath: string;
+}
+
+/**
+ * Parse TypeScript file and extract type/interface/class definitions
+ */
+function parseTypeScriptTypes(content: string, filePath: string): Array<{
+  name: string;
+  kind: "type" | "interface" | "class";
+  definition: string;
+  description: string;
+}> {
+  const results: Array<{
+    name: string;
+    kind: "type" | "interface" | "class";
+    definition: string;
+    description: string;
+  }> = [];
+
+  // Match exported type aliases: export type Name = ...
+  // This regex handles nested braces and complex union types
+  const typeRegex = /(?:\/\*\*[\s\S]*?\*\/\s*)?(export\s+type\s+(\w+)(?:<[^>]+>)?\s*=\s*)/g;
+  let match;
+
+  while ((match = typeRegex.exec(content)) !== null) {
+    const startIndex = match.index;
+    const name = match[2];
+    const afterEquals = content.slice(match.index + match[0].length);
+
+    // Find the end of the type definition (handle nested braces and semicolons)
+    const endIndex = findTypeDefinitionEnd(afterEquals);
+    const typeBody = afterEquals.slice(0, endIndex);
+
+    // Extract JSDoc if present
+    const jsDocMatch = content.slice(Math.max(0, startIndex - 500), startIndex).match(/\/\*\*[\s\S]*?\*\/\s*$/);
+    const jsDoc = jsDocMatch ? jsDocMatch[0] : "";
+    const description = extractJSDocDescription(jsDoc);
+
+    const fullDefinition = jsDoc + match[1] + typeBody;
+
+    results.push({
+      name,
+      kind: "type",
+      definition: fullDefinition.trim(),
+      description,
+    });
+  }
+
+  // Match exported interfaces: export interface Name { ... }
+  const interfaceRegex = /(?:\/\*\*[\s\S]*?\*\/\s*)?(export\s+interface\s+(\w+)(?:<[^>]+>)?(?:\s+extends\s+[^{]+)?\s*\{)/g;
+
+  while ((match = interfaceRegex.exec(content)) !== null) {
+    const startIndex = match.index;
+    const name = match[2];
+    const afterBrace = content.slice(match.index + match[0].length);
+
+    // Find matching closing brace
+    const endIndex = findMatchingBrace(afterBrace);
+    const interfaceBody = afterBrace.slice(0, endIndex);
+
+    // Extract JSDoc if present
+    const jsDocMatch = content.slice(Math.max(0, startIndex - 500), startIndex).match(/\/\*\*[\s\S]*?\*\/\s*$/);
+    const jsDoc = jsDocMatch ? jsDocMatch[0] : "";
+    const description = extractJSDocDescription(jsDoc);
+
+    const fullDefinition = jsDoc + match[1] + interfaceBody + "}";
+
+    results.push({
+      name,
+      kind: "interface",
+      definition: fullDefinition.trim(),
+      description,
+    });
+  }
+
+  // Match exported classes: export class Name { ... }
+  const classRegex = /(?:\/\*\*[\s\S]*?\*\/\s*)?(export\s+class\s+(\w+)(?:<[^>]+>)?(?:\s+(?:extends|implements)\s+[^{]+)?\s*\{)/g;
+
+  while ((match = classRegex.exec(content)) !== null) {
+    const startIndex = match.index;
+    const name = match[2];
+    const afterBrace = content.slice(match.index + match[0].length);
+
+    // Find matching closing brace
+    const endIndex = findMatchingBrace(afterBrace);
+    const classBody = afterBrace.slice(0, endIndex);
+
+    // Extract JSDoc if present
+    const jsDocMatch = content.slice(Math.max(0, startIndex - 500), startIndex).match(/\/\*\*[\s\S]*?\*\/\s*$/);
+    const jsDoc = jsDocMatch ? jsDocMatch[0] : "";
+    const description = extractJSDocDescription(jsDoc);
+
+    const fullDefinition = jsDoc + match[1] + classBody + "}";
+
+    results.push({
+      name,
+      kind: "class",
+      definition: fullDefinition.trim(),
+      description,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Find the end of a type definition (handles nested braces, arrays, unions)
+ */
+function findTypeDefinitionEnd(content: string): number {
+  let braceCount = 0;
+  let parenCount = 0;
+  let inString = false;
+  let stringChar = "";
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const prevChar = i > 0 ? content[i - 1] : "";
+
+    // Handle string literals
+    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === "{") braceCount++;
+    if (char === "}") braceCount--;
+    if (char === "(") parenCount++;
+    if (char === ")") parenCount--;
+
+    // Type definition ends at semicolon or newline when not inside braces/parens
+    if (braceCount === 0 && parenCount === 0) {
+      if (char === ";") return i + 1;
+      // Also end at double newline (next export statement)
+      if (char === "\n" && content[i + 1] === "\n" && content.slice(i + 2, i + 8) === "export") {
+        return i;
+      }
+    }
+  }
+
+  return content.length;
+}
+
+/**
+ * Find matching closing brace
+ */
+function findMatchingBrace(content: string): number {
+  let braceCount = 1;
+  let inString = false;
+  let stringChar = "";
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const prevChar = i > 0 ? content[i - 1] : "";
+
+    // Handle string literals
+    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === "{") braceCount++;
+    if (char === "}") {
+      braceCount--;
+      if (braceCount === 0) return i;
+    }
+  }
+
+  return content.length;
+}
+
+/**
+ * Extract description from JSDoc comment
+ */
+function extractJSDocDescription(jsDoc: string): string {
+  if (!jsDoc) return "";
+
+  // Remove /** and */ and * prefixes
+  const cleaned = jsDoc
+    .replace(/^\/\*\*\s*/, "")
+    .replace(/\s*\*\/$/, "")
+    .split("\n")
+    .map(line => line.replace(/^\s*\*\s?/, ""))
+    .filter(line => !line.startsWith("@"))
+    .join(" ")
+    .trim();
+
+  return cleaned;
+}
+
+/**
+ * Determine package name from file path
+ */
+function determinePackageName(filePath: string): { importPackage: string; importPath: string } {
+  // Extract package info from path like:
+  // dfns-sdk-ts/packages/sdk/generated/wallets/types.ts -> @dfns/sdk, @dfns/sdk/generated/wallets
+  // dfns-sdk-ts/packages/sdk-browser/signers/webauthn.ts -> @dfns/sdk-browser
+  // dfns-sdk-ts/packages/lib-ethersjs6/index.ts -> @dfns/lib-ethersjs6
+
+  const packagesMatch = filePath.match(/packages\/([^/]+)/);
+  if (!packagesMatch) {
+    return { importPackage: "@dfns/sdk", importPath: "@dfns/sdk" };
+  }
+
+  const packageDir = packagesMatch[1];
+  const importPackage = `@dfns/${packageDir}`;
+
+  // For generated types, include the subpath
+  const afterPackage = filePath.slice(filePath.indexOf(packageDir) + packageDir.length + 1);
+  if (afterPackage.startsWith("generated/")) {
+    // e.g., generated/wallets/types.ts -> @dfns/sdk/generated/wallets
+    const subPath = afterPackage.replace(/\/types\.ts$/, "").replace(/\/index\.ts$/, "");
+    return { importPackage, importPath: `${importPackage}/${subPath}` };
+  }
+
+  // For types/ directory
+  if (afterPackage.startsWith("types/")) {
+    const subPath = afterPackage.replace(/\.ts$/, "");
+    return { importPackage, importPath: `${importPackage}/${subPath}` };
+  }
+
+  return { importPackage, importPath: importPackage };
+}
+
+/**
+ * Determine type category from file path
+ */
+function determineTypeCategory(filePath: string): string {
+  const categoryPatterns: Record<string, string> = {
+    "generated/wallets": "Wallets",
+    "generated/auth": "Authentication",
+    "generated/keys": "Keys",
+    "generated/policies": "Policies",
+    "generated/permissions": "Permissions",
+    "generated/networks": "Networks",
+    "generated/webhooks": "Webhooks",
+    "generated/staking": "Staking",
+    "generated/exchanges": "Exchanges",
+    "generated/feeSponsors": "Fee Sponsors",
+    "generated/signers": "Signers",
+    "generated/swaps": "Swaps",
+    "generated/agreements": "Agreements",
+    "generated/allocations": "Allocations",
+    "types/wallets": "Wallets",
+    "types/auth": "Authentication",
+    "sdk-browser": "Browser SDK",
+    "sdk-keysigner": "Key Signer",
+    "sdk-react-native": "React Native SDK",
+    "lib-ethersjs": "Ethereum (ethers.js)",
+    "lib-viem": "Ethereum (viem)",
+    "lib-solana": "Solana",
+    "lib-bitcoin": "Bitcoin",
+  };
+
+  for (const [pattern, category] of Object.entries(categoryPatterns)) {
+    if (filePath.includes(pattern)) {
+      return category;
+    }
+  }
+
+  return "Core SDK";
 }
 
 /**
@@ -126,9 +422,49 @@ async function findMarkdownFiles(dir: string): Promise<string[]> {
   return files;
 }
 
+/**
+ * Recursively finds all TypeScript files in SDK packages
+ */
+async function findTypeScriptFiles(dir: string): Promise<string[]> {
+  const files: string[] = [];
+
+  async function walk(currentDir: string) {
+    try {
+      const entries = await readdir(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          // Skip node_modules, dist, examples, and hidden directories
+          if (entry.name === "node_modules" || entry.name === "dist" ||
+              entry.name === "examples" || entry.name.startsWith(".")) {
+            continue;
+          }
+          await walk(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+          // Only include type definition files and main files
+          const inSignersDir = currentDir.includes("/signers/") || currentDir.endsWith("/signers");
+          const inTypesDir = currentDir.includes("/types/") || currentDir.endsWith("/types");
+
+          if (entry.name === "types.ts" || entry.name === "index.ts" ||
+              entry.name === "signer.ts" || inSignersDir ||
+              inTypesDir || entry.name.includes("Client")) {
+            files.push(fullPath);
+          }
+        }
+      }
+    } catch (err) {
+      // Directory might not exist
+    }
+  }
+
+  await walk(dir);
+  return files;
+}
+
 export class DocumentIndex {
   private docs: Map<string, DocEntry> = new Map();
   private endpointIndex: Map<string, ApiEndpoint> = new Map();
+  private typeIndex: Map<string, TypeEntry> = new Map();
   private docsDir: string;
   private sdkDir: string;
 
@@ -148,7 +484,45 @@ export class DocumentIndex {
     const sdkFiles = await findMarkdownFiles(this.sdkDir);
     await this.indexFiles(sdkFiles, this.sdkDir, "sdk");
 
-    console.error(`Indexed ${this.docs.size} documents and ${this.endpointIndex.size} endpoints`);
+    // Index TypeScript types from SDK packages
+    console.error("Building TypeScript type index...");
+    const packagesDir = join(this.sdkDir, "packages");
+    const tsFiles = await findTypeScriptFiles(packagesDir);
+    await this.indexTypeScriptFiles(tsFiles);
+
+    console.error(`Indexed ${this.docs.size} documents, ${this.endpointIndex.size} endpoints, and ${this.typeIndex.size} types`);
+  }
+
+  /**
+   * Index TypeScript files for type definitions
+   */
+  private async indexTypeScriptFiles(files: string[]): Promise<void> {
+    for (const filePath of files) {
+      try {
+        const content = await readFile(filePath, "utf-8");
+        const types = parseTypeScriptTypes(content, filePath);
+        const { importPackage, importPath } = determinePackageName(filePath);
+        const category = determineTypeCategory(filePath);
+
+        for (const typeInfo of types) {
+          const entry: TypeEntry = {
+            name: typeInfo.name,
+            kind: typeInfo.kind,
+            definition: typeInfo.definition,
+            importPackage,
+            importPath,
+            category,
+            description: typeInfo.description,
+            sourceFile: filePath,
+          };
+
+          // Use lowercase name as key for case-insensitive lookup
+          this.typeIndex.set(typeInfo.name.toLowerCase(), entry);
+        }
+      } catch (err) {
+        console.error(`Failed to index types from ${filePath}:`, err);
+      }
+    }
   }
 
   private async indexFiles(files: string[], baseDir: string, prefix: string) {
@@ -431,5 +805,111 @@ export class DocumentIndex {
       categories.add(doc.category);
     }
     return Array.from(categories).sort();
+  }
+
+  // ============================================================================
+  // Type Index Methods
+  // ============================================================================
+
+  /**
+   * Get a type by exact name (case-insensitive)
+   */
+  getType(name: string): TypeEntry | undefined {
+    return this.typeIndex.get(name.toLowerCase());
+  }
+
+  /**
+   * Search types by name pattern
+   */
+  searchTypes(query: string, limit: number = 20): TypeEntry[] {
+    const queryLower = query.toLowerCase();
+    const results: Array<{ entry: TypeEntry; score: number }> = [];
+
+    for (const entry of this.typeIndex.values()) {
+      const nameLower = entry.name.toLowerCase();
+      let score = 0;
+
+      // Exact match is highest
+      if (nameLower === queryLower) {
+        score = 1000;
+      }
+      // Starts with query
+      else if (nameLower.startsWith(queryLower)) {
+        score = 500;
+      }
+      // Contains query
+      else if (nameLower.includes(queryLower)) {
+        score = 100;
+      }
+      // Word boundary match (e.g., "Wallet" matches "CreateWalletRequest")
+      else {
+        // Split camelCase/PascalCase into words
+        const words = entry.name.split(/(?=[A-Z])/).map(w => w.toLowerCase());
+        for (const word of words) {
+          if (word === queryLower) {
+            score = 200;
+            break;
+          }
+          if (word.startsWith(queryLower)) {
+            score = Math.max(score, 50);
+          }
+        }
+      }
+
+      // Also check description
+      if (score === 0 && entry.description.toLowerCase().includes(queryLower)) {
+        score = 25;
+      }
+
+      if (score > 0) {
+        results.push({ entry, score });
+      }
+    }
+
+    // Sort by score descending, then by name length (prefer shorter names)
+    results.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.entry.name.length - b.entry.name.length;
+    });
+
+    return results.slice(0, limit).map(r => r.entry);
+  }
+
+  /**
+   * List all types, optionally filtered by category
+   */
+  listTypes(category?: string): Array<{ name: string; kind: string; category: string; importPath: string }> {
+    const results: Array<{ name: string; kind: string; category: string; importPath: string }> = [];
+
+    for (const entry of this.typeIndex.values()) {
+      if (!category || entry.category.toLowerCase().includes(category.toLowerCase())) {
+        results.push({
+          name: entry.name,
+          kind: entry.kind,
+          category: entry.category,
+          importPath: entry.importPath,
+        });
+      }
+    }
+
+    return results.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * Get all unique type categories
+   */
+  getTypeCategories(): string[] {
+    const categories = new Set<string>();
+    for (const entry of this.typeIndex.values()) {
+      categories.add(entry.category);
+    }
+    return Array.from(categories).sort();
+  }
+
+  /**
+   * Get total type count
+   */
+  getTypeCount(): number {
+    return this.typeIndex.size;
   }
 }

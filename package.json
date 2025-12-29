@@ -1,17 +1,40 @@
 {
   "name": "dfns-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for DFNS documentation and SDK reference",
+  "version": "1.2.0",
+  "description": "MCP server for DFNS documentation and SDK reference - provides AI agents with access to DFNS API docs, TypeScript types, and code examples",
   "module": "src/index.ts",
   "type": "module",
-  "private": true,
   "bin": {
     "dfns-mcp": "./src/index.ts"
   },
+  "files": [
+    "src/**/*.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts",
     "inspect": "bunx @anthropics/inspector bun run src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "dfns",
+    "wallet",
+    "crypto",
+    "blockchain",
+    "ai",
+    "claude",
+    "documentation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jhubbardsf/dfns-mcp.git"
+  },
+  "author": "Josh Hubbard",
+  "license": "MIT",
+  "engines": {
+    "bun": ">=1.0.0"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -21,6 +44,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
+    "tar": "^7.4.3",
     "zod": "^4.1.13"
   }
 }
