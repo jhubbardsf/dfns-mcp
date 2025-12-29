@@ -30,7 +30,7 @@ powershell -c "irm bun.sh/install.ps1 | iex"
 ### Claude Code (Recommended)
 
 ```bash
-claude mcp add -s user dfns-docs -- bunx dfns-mcp@latest
+claude mcp add -s user dfns-mcp -- bunx dfns-mcp@latest
 ```
 
 The `-s user` flag installs to the user so it's available in all your projects.
@@ -42,7 +42,7 @@ Add to your Cursor MCP settings (`.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
-    "dfns-docs": {
+    "dfns-mcp": {
       "command": "bunx",
       "args": ["dfns-mcp@latest"]
     }
@@ -53,7 +53,7 @@ Add to your Cursor MCP settings (`.cursor/mcp.json`):
 ### Codex
 
 ```bash
-codex mcp add dfns-docs -- bunx dfns-mcp@latest
+codex mcp add dfns-mcp -- bunx dfns-mcp@latest
 ```
 
 ### Gemini CLI
@@ -63,7 +63,7 @@ Add to your Gemini CLI config (`~/.gemini/settings.json`):
 ```json
 {
   "mcpServers": {
-    "dfns-docs": {
+    "dfns-mcp": {
       "command": "bunx",
       "args": ["dfns-mcp@latest"]
     }
@@ -90,7 +90,7 @@ Add this to your global `~/.claude/CLAUDE.md` (or `~/AGENTS.md` for other agents
 
 When working with DFNS (wallet infrastructure, key management, blockchain integrations):
 
-1. **Always** call `mcp__dfns-docs__init` at the start of any DFNS-related task
+1. **Always** call `mcp__dfns-mcp__init` at the start of any DFNS-related task
 2. **Never** rely on training data for DFNS APIs - always use `search_docs` and `get_doc` to verify
 3. Use `search_types` and `get_type` to get accurate TypeScript type definitions
 4. DFNS APIs and SDKs change frequently - the MCP server has the latest documentation
