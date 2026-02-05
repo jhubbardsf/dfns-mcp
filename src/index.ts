@@ -90,7 +90,7 @@ You **MUST** use \`search_docs\` / \`get_doc\` for:
 ### 4. How to Use DFNS MCP Tools (WORKFLOW)
 
 1.  **Search**: \`search_docs({ query: "create wallet" })\`
-2.  **Read**: \`get_doc({ path: "docs/api-docs/wallets/create-wallet/README.md" })\`
+2.  **Read**: \`get_doc({ path: "docs/api-reference/wallets/create-wallet.md" })\`
 3.  **Answer**: Base your answer **ONLY** on the retrieved content.
 
 ### 5. Available Tools & Resources
@@ -283,10 +283,13 @@ server.tool(
     
     for (const ep of endpoints) {
         // Simplify doc path to a group name
-        // e.g. docs/api-docs/wallets/create-wallet/README.md -> Wallets
+        // e.g. docs/api-reference/wallets/create-wallet.md -> Wallets
         const parts = ep.docPath.split('/');
         let group = "General";
-        if (parts.includes('api-docs')) {
+        if (parts.includes('api-reference')) {
+            const idx = parts.indexOf('api-reference');
+            if (parts[idx+1]) group = parts[idx+1].charAt(0).toUpperCase() + parts[idx+1].slice(1);
+        } else if (parts.includes('api-docs')) {
             const idx = parts.indexOf('api-docs');
             if (parts[idx+1]) group = parts[idx+1].charAt(0).toUpperCase() + parts[idx+1].slice(1);
         }
@@ -930,7 +933,7 @@ const request: CreateWalletRequest = {
 // Tool: Update documentation cache
 server.tool(
   "update_docs",
-  "Force update the DFNS documentation cache. Downloads the latest docs from GitHub.",
+  "Force update the DFNS documentation cache. Downloads the latest docs from docs.dfns.co and SDK from GitHub.",
   {},
   async () => {
     const result = await updateDocs();
@@ -1006,7 +1009,12 @@ async function main() {
   docIndex = new DocumentIndex(DOCS_DIR, SDK_DIR);
 
   // Build the document index before starting server
-  await docIndex.build();
+  try {
+    await docIndex.build();
+  } catch (err) {
+    console.error("Warning: Failed to build full index:", err);
+    // Server starts anyway — tools will return empty results but won't crash
+  }
 
   // Connect via stdio transport
   const transport = new StdioServerTransport();

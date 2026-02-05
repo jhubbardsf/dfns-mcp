@@ -370,22 +370,34 @@ function extractKeywords(content: string): string[] {
  */
 function determineCategory(filePath: string): string {
   const categoryMap: Record<string, string> = {
-    "api-docs/authentication": "Authentication API",
-    "api-docs/wallets": "Wallets API",
-    "api-docs/keys": "Keys API",
-    "api-docs/policy-engine": "Policy Engine API",
-    "api-docs/permissions": "Permissions API",
-    "api-docs/webhooks": "Webhooks API",
-    "api-docs/networks": "Networks API",
-    "api-docs/fee-sponsors": "Fee Sponsors API",
-    "integrations/exchanges": "Exchange Integrations",
-    "integrations/staking": "Staking",
-    "integrations/swaps": "Swaps",
+    // API reference docs (from docs.dfns.co)
+    "api-reference/auth": "Authentication API",
+    "api-reference/wallets": "Wallets API",
+    "api-reference/keys": "Keys API",
+    "api-reference/policies": "Policy Engine API",
+    "api-reference/permissions": "Permissions API",
+    "api-reference/webhooks": "Webhooks API",
+    "api-reference/networks": "Networks API",
+    "api-reference/fee-sponsors": "Fee Sponsors API",
+    "api-reference/agreements": "Agreements API",
+    "api-reference/allocations": "Allocations API",
+    "api-reference/broadcast": "Broadcast API",
+    "api-reference/staking": "Staking API",
+    "api-reference/exchanges": "Exchange Integrations",
+    "api-reference/swaps": "Swaps API",
+    "api-reference/sign": "Signing API",
+    "api-reference/signers": "Signers API",
+    // Top-level sections (from docs.dfns.co)
+    "core-concepts": "Core Concepts",
+    "introduction": "Getting Started",
+    "advanced": "Advanced Topics",
+    "networks": "Networks",
+    "sdks": "SDK",
+    "solutions": "Solutions",
+    "features": "Features",
     "integrations": "Integrations",
-    "getting-started": "Getting Started",
-    "advanced-topics": "Advanced Topics",
     "guides": "Guides",
-    "use-cases": "Use Cases",
+    // SDK package patterns (from GitHub tarball)
     "lib-": "SDK Libraries",
     "sdk-": "SDK Core",
     "examples": "SDK Examples",
@@ -552,9 +564,9 @@ export class DocumentIndex {
   }
 
   private extractEndpoints(content: string, docPath: string) {
-    // Look for patterns like "POST /wallets" or "GET /wallets/{id}"
-    // Common in headers or code blocks
-    const regex = /(GET|POST|PUT|DELETE|PATCH)\s+(\/[a-zA-Z0-9\-\/_{}]+)/g;
+    // Look for patterns like "POST /wallets" or "get /wallets/{id}"
+    // Docs from docs.dfns.co use lowercase methods (e.g., "openapi.yaml post /wallets")
+    const regex = /(GET|POST|PUT|DELETE|PATCH)\s+(\/[a-zA-Z0-9\-\/_{}]+)/gi;
     let match;
     while ((match = regex.exec(content)) !== null) {
       const [fullMatch, method, path] = match;

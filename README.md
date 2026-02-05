@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server that provides AI agents with access to the
 
 - **Full-Text Search**: Instantly search across all DFNS guides, API docs, and SDK source code
 - **TypeScript Type Intelligence**: Search and retrieve SDK type definitions with import paths
-- **Auto-Updating Docs**: Documentation is fetched from GitHub on first run and cached locally
+- **Auto-Updating Docs**: Documentation is fetched from docs.dfns.co on first run and cached locally
 - **Context Initialization**: Dedicated `init` tool to enforce documentation-first behavior
 - **Smart Context**: Retrieve specific documents, code examples, and API endpoint definitions
 - **SDK Intelligence**: Mapped knowledge of supported blockchains and their SDK packages
@@ -100,7 +100,7 @@ This prevents agents from hallucinating outdated API signatures or SDK patterns.
 
 ## How It Works
 
-On first run, the server automatically downloads the latest DFNS documentation from GitHub and caches it locally in `~/.cache/dfns-mcp/`. The cache is refreshed every 24 hours automatically, or you can force an update using the `update_docs` tool.
+On first run, the server automatically downloads the latest DFNS documentation from [docs.dfns.co](https://docs.dfns.co) and SDK types from GitHub, caching them locally in `~/.cache/dfns-mcp/`. The cache is refreshed every 24 hours automatically, or you can force an update using the `update_docs` tool.
 
 ## Available Tools
 
@@ -130,7 +130,7 @@ On first run, the server automatically downloads the latest DFNS documentation f
 
 | Tool | Description |
 |------|-------------|
-| `update_docs` | Force update the documentation cache from GitHub |
+| `update_docs` | Force update the documentation cache from docs.dfns.co and GitHub |
 | `cache_info` | Get information about the cache (location, last update, etc.) |
 
 ## Resources

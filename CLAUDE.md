@@ -9,7 +9,7 @@ dfns-mcp/
 ├── src/
 │   ├── index.ts         # Main MCP server - tools, resources, startup
 │   ├── indexer.ts       # Document indexing and search logic
-│   └── docs-fetcher.ts  # Downloads and caches docs from GitHub
+│   └── docs-fetcher.ts  # Downloads and caches docs from docs.dfns.co + GitHub
 ├── package.json
 ├── README.md
 └── LICENSE
@@ -44,14 +44,15 @@ bunx dfns-mcp@latest
 
 ### Documentation Fetching
 
-The server automatically downloads DFNS docs from GitHub on first startup:
+The server automatically downloads DFNS docs on first startup from two sources:
 
 1. **Cache Location**: `~/.cache/dfns-mcp/`
-2. **Repos Fetched**:
-   - `dfns/dfns-api-docs` (branch: `m`)
-   - `dfns/dfns-sdk-ts` (branch: `m`)
+2. **Sources Fetched**:
+   - **API Docs**: `https://docs.dfns.co/llms-full.txt` (split into individual markdown files)
+   - **SDK Types**: `dfns/dfns-sdk-ts` GitHub tarball (branch: `m`)
 3. **Update Strategy**: Auto-checks every 24 hours, or manual via `update_docs` tool
-4. **Mechanism**: Downloads GitHub tarballs (faster than git clone)
+4. **Mechanism**: Docs fetched as single file and split; SDK downloaded as GitHub tarball
+5. **Graceful Degradation**: If a fetch fails but cached data exists, server continues with stale data
 
 ### Indexing
 
@@ -88,8 +89,8 @@ The server automatically downloads DFNS docs from GitHub on first startup:
 
 | Tool | Description |
 |------|-------------|
-| `update_docs` | Force refresh documentation from GitHub |
-| `cache_info` | Show cache location, last update, commit SHAs |
+| `update_docs` | Force refresh documentation from docs.dfns.co and GitHub |
+| `cache_info` | Show cache location, last update, content hashes |
 
 ## MCP Resources
 
@@ -117,4 +118,5 @@ The server automatically downloads DFNS docs from GitHub on first startup:
 - Use Bun exclusively (not Node.js or npm)
 - TypeScript with strict types
 - Use type guards instead of type casting (`as Type`)
-- DFNS repos use `m` as their default branch (not `main`)
+- DFNS SDK repo uses `m` as its default branch (not `main`)
+- API docs are sourced from docs.dfns.co/llms-full.txt (the old dfns-api-docs GitHub repo was deleted)
